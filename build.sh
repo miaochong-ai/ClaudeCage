@@ -213,12 +213,18 @@ RIM_BIND_PWD=1
 # Start the 'claude' command in the same working directory.
 RIM_EXEC_SAME_PWD=1
 
-# Host toolchain access (read-only)
-RIM_BIND_RO="/usr:/usr,/opt:/opt,/etc:/etc"
-[[ -e /lib   ]] && RIM_BIND_RO+=",/lib:/lib"
-[[ -e /lib64 ]] && RIM_BIND_RO+=",/lib64:/lib64"
-[[ -e /bin   ]] && RIM_BIND_RO+=",/bin:/bin"
-[[ -e /sbin  ]] && RIM_BIND_RO+=",/sbin:/sbin"
+# Host toolchain access (read-only).
+# NOTE: binding host /usr, /bin, ... over the container's own tree breaks
+# distros whose layout differs from the container (e.g. WSL2/Ubuntu host
+# against an Arch-based RunImage): the autorun binary ends up missing and
+# exec fails with ENOENT. Opt in only when you actually need host toolchain.
+if [[ "${CLAUDECAGE_BIND_HOST_TOOLS:-0}" == "1" ]]; then
+  RIM_BIND_RO="/usr:/usr,/opt:/opt,/etc:/etc"
+  [[ -e /lib   ]] && RIM_BIND_RO+=",/lib:/lib"
+  [[ -e /lib64 ]] && RIM_BIND_RO+=",/lib64:/lib64"
+  [[ -e /bin   ]] && RIM_BIND_RO+=",/bin:/bin"
+  [[ -e /sbin  ]] && RIM_BIND_RO+=",/sbin:/sbin"
+fi
 
 # SSH for git: forward agent socket ONLY (no ~/.ssh by default)
 if [[ -n "${SSH_AUTH_SOCK:-}" && -S "${SSH_AUTH_SOCK}" ]]; then
@@ -229,7 +235,7 @@ fi
 # If you must allow reading host SSH keys/config (less secure):
 #   CLAUDECAGE_ALLOW_SSH_KEYS=1 ./ClaudeCage ...
 if [[ "${CLAUDECAGE_ALLOW_SSH_KEYS:-0}" == "1" && -d "${HOME}/.ssh" ]]; then
-  RIM_BIND_RO+=",${HOME}/.ssh:${HOME}/.ssh"
+  RIM_BIND_RO="${RIM_BIND_RO:+${RIM_BIND_RO},}${HOME}/.ssh:${HOME}/.ssh"
 fi
 
 # For better isolation, unshare other common host resources.
