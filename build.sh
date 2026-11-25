@@ -137,6 +137,10 @@ cat >/app/bin/claude <<'EOW'
 
 set -euo pipefail
 
+TARGET="$(readlink -f /app/bun/bin/claude 2>/dev/null || true)"
+if [ -n "$TARGET" ] && [ -f "$TARGET" ] && head -c 4 "$TARGET" 2>/dev/null | grep -q ELF; then
+  exec "$TARGET" "$@"
+fi
 exec /app/bun/bin/bun /app/bun/bin/claude "$@"
 EOW
 

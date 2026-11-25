@@ -39,6 +39,10 @@ if head -c 4 "${CLAUDE_ENTRY}" 2>/dev/null | grep -q 'ELF'; then
   exec "${CLAUDE_ENTRY}" "$@"
 fi
 
+TARGET="$(readlink -f /app/bun/bin/claude 2>/dev/null || true)"
+if [ -n "$TARGET" ] && [ -f "$TARGET" ] && head -c 4 "$TARGET" 2>/dev/null | grep -q ELF; then
+  exec "$TARGET" "$@"
+fi
 exec /app/bun/bin/bun "${CLAUDE_ENTRY}" "$@"
 EOW
 
