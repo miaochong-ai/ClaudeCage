@@ -27,7 +27,19 @@ cat >/app/bin/claude <<'EOW'
 
 set -euo pipefail
 
-exec /app/bun/bin/bun /app/bun/bin/claude "$@"
+# claude-code may ship either a JS entrypoint or a native ELF binary.
+# Resolve the real target and dispatch accordingly (bun only for JS).
+CLAUDE_ENTRY="$(readlink -f /app/bun/bin/claude 2>/dev/null || true)"
+if [ ! -f "${CLAUDE_ENTRY}" ]; then
+  echo "claude entrypoint not found under /app/bun/bin" >&2
+  exit 127
+fi
+
+if head -c 4 "${CLAUDE_ENTRY}" 2>/dev/null | grep -q 'ELF'; then
+  exec "${CLAUDE_ENTRY}" "$@"
+fi
+
+exec /app/bun/bin/bun "${CLAUDE_ENTRY}" "$@"
 EOW
 
 chmod +x /app/bin/claude
